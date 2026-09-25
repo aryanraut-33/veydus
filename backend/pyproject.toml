@@ -1,0 +1,106 @@
+# ─────────────────────────────────────────────────────────────────
+# VEYDUS Backend — Python Project Configuration
+# ─────────────────────────────────────────────────────────────────
+# What:   Defines all dependencies, build config, and tool settings
+#         for the VEYDUS backend service.
+# Stack:  Python 3.12+, FastAPI, SQLAlchemy 2.x (async + Core),
+#         asyncpg, Alembic, Pydantic Settings.
+# Layout: src/ layout (src/veydus/) per HLD §16.
+# Install: cd backend && pip install -e ".[dev]"
+# ─────────────────────────────────────────────────────────────────
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "veydus"
+version = "0.1.0"
+description = "VEYDUS — Hierarchical, access-controlled RAG for enterprises"
+requires-python = ">=3.12"
+dependencies = [
+    # ── Database (HLD §5) ────────────────────────────────────────
+    "sqlalchemy[asyncio]>=2.0,<3.0",   # Async Core + connection pooling
+    "asyncpg>=0.29",                    # Async PostgreSQL driver (runtime)
+    "alembic>=1.13",                    # Schema migration management
+    "psycopg2-binary>=2.9",            # Sync PG driver (Alembic + scripts)
+
+    # ── API (HLD §11) ───────────────────────────────────────────
+    "fastapi>=0.111",                   # ASGI web framework
+    "uvicorn[standard]>=0.30",          # ASGI server with lifespan
+
+    # ── Configuration ────────────────────────────────────────────
+    "pydantic-settings>=2.0",           # Settings from environment variables
+    "pydantic>=2.0",                    # Data validation and serialisation
+]
+
+[project.optional-dependencies]
+dev = [
+    # ── Testing ──────────────────────────────────────────────────
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "testcontainers[postgres]>=4.0",    # Ephemeral pgvector containers
+
+    # ── Linting & Type Checking ──────────────────────────────────
+    "ruff>=0.4",                        # Fast Python linter + formatter
+    "mypy>=1.10",                       # Static type checker (strict mode)
+    "types-psycopg2>=2.9",              # Type stubs for psycopg2
+
+    # ── Git Hooks ────────────────────────────────────────────────
+    "pre-commit>=3.7",
+]
+
+# ── Package discovery ────────────────────────────────────────────
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# ── Ruff (linter + formatter) ───────────────────────────────────
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort — import ordering
+    "UP",   # pyupgrade — modern Python patterns
+    "B",    # flake8-bugbear — common pitfalls
+    "SIM",  # flake8-simplify
+    "TCH",  # type-checking-only imports
+]
+ignore = [
+    "E501",  # line length handled by ruff format; multiline SQL strings allowed
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["veydus"]
+
+# ── Mypy (static type checker) ──────────────────────────────────
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "testcontainers",
+    "testcontainers.*",
+    "psycopg2",
+    "psycopg2.*",
+    "asyncpg",
+    "asyncpg.*",
+]
+ignore_missing_imports = true
+
+# ── Pytest ──────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "isolation: adversarial isolation suite — blocking CI gate (HLD §17.2)",
+    "integration: tests requiring a running database container",
+]

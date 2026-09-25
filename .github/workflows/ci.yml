@@ -1,0 +1,95 @@
+# ─────────────────────────────────────────────────────────────────
+# VEYDUS — Continuous Integration (CI) Workflow (HLD §16, §18.1)
+# ─────────────────────────────────────────────────────────────────
+# What:  GitHub Actions workflow that runs on PRs and pushes to main.
+#        Executes code linting, formatting checks, type-checking,
+#        architectural boundary enforcement, and integration/isolation
+#        test suites against an ephemeral PostgreSQL + pgvector instance.
+# Stack: GitHub Actions, Python 3.12, ruff, mypy, pytest, pgvector.
+# ─────────────────────────────────────────────────────────────────
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-typecheck:
+    name: Lint, Format & Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "./backend[dev]"
+
+      - name: Check code formatting (ruff format)
+        run: |
+          ruff format --check backend
+
+      - name: Run linter (ruff check)
+        run: |
+          ruff check backend
+
+      - name: Run static type analysis (mypy strict)
+        run: |
+          mypy backend/src backend/tests
+
+      - name: Run architectural boundary check
+        run: |
+          pytest backend/tests/unit/test_architecture_enforcement.py -v
+
+  test-suite:
+    name: Database, RLS & Isolation Test Suite
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: veydus
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      TEST_DB_HOST: localhost
+      TEST_DB_PORT: 5432
+      TEST_DB_NAME: veydus
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "./backend[dev]"
+
+      - name: Run unit, integration, and isolation test suites
+        run: |
+          pytest backend/tests -v

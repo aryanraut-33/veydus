@@ -1,0 +1,38 @@
+# ─────────────────────────────────────────────────────────────────
+# VEYDUS — Local Development Docker Compose
+# ─────────────────────────────────────────────────────────────────
+# What:  PostgreSQL 16 with the pgvector extension for local dev.
+# Why:   HLD §5 requires pgvector for vector similarity search.
+#        HLD §6.4 requires pgvector >= 0.8.0 for iterative index
+#        scans that maintain recall under restrictive access filters.
+# How:   Official pgvector/pgvector image (Postgres 16 base).
+#        An init script creates the two HLD §5.4 database roles
+#        (veydus_migrate, veydus_app) on first container start.
+# Usage: docker compose up -d
+# ─────────────────────────────────────────────────────────────────
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: veydus-postgres
+    environment:
+      POSTGRES_DB: veydus
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persistent data across restarts
+      - pgdata:/var/lib/postgresql/data
+      # Role initialization script — runs once on first start
+      - ./backend/docker/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d veydus"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    driver: local

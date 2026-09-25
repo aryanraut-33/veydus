@@ -1,0 +1,53 @@
+# ─── Project specification docs (tracked separately) ─────────────
+INSTRUCTIONS.md
+VEYDUS-HLD-MVP.md
+VEYDUS-PRD.md
+smthg.txt
+veydus_implementation_plan.md
+veydus_implementation_plan.md.rtf
+sprint_a1_summary_report.txt
+
+# ─── Python ──────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.whl
+
+# ─── Virtual environments ────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ─── IDE / Editor ────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ─── Testing & analysis ─────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ─── Docker ──────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ─── Environment & secrets ───────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ─── Node / Frontend ────────────────────────────────────────────
+node_modules/
+.next/
+out/
