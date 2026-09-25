@@ -15,7 +15,9 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from veydus.api.routers.conversations import router as conversations_router
 from veydus.api.routers.internal_jobs import router as internal_jobs_router
+from veydus.api.routers.users import router as users_router
 
 app = FastAPI(
     title="VEYDUS API",
@@ -32,6 +34,8 @@ app.add_middleware(
 )
 
 app.include_router(internal_jobs_router)
+app.include_router(conversations_router)
+app.include_router(users_router)
 
 
 @app.get("/health", tags=["system"])

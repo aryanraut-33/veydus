@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     # Migration connection (veydus_migrate role, BYPASSRLS)
     migrate_db_url: str = "postgresql://veydus_migrate:veydus_migrate_pw@localhost:5432/veydus"
 
+    # ── Authentication & Security ────────────────────────────────
+    jwt_secret_key: str = Field(
+        default="insecure_dev_jwt_secret_key_change_in_production",
+        validation_alias=AliasChoices("JWT_SECRET_KEY", "VEYDUS_JWT_SECRET_KEY"),
+    )
+
     # ── Connection Pool ──────────────────────────────────────────
     db_pool_size: int = 5
     db_max_overflow: int = 10
@@ -66,6 +72,20 @@ class Settings(BaseSettings):
     staging_backend: str = "local"
     staging_local_dir: str = "/tmp/veydus_staging"
     docling_ocr_engine: str = "rapidocr"  # Pinned explicitly per HLD §7.3
+
+    # ── Retrieval & Indexing (HLD §6.3, §6.4, tunable) ───────────
+    retrieval_k: int = 30
+    retrieval_ef_search: int = 100
+    retrieval_max_scan_tuples: int = 20000
+
+    # ── Reranking & Context (HLD §8.2, §15, tunable) ─────────────
+    rerank_n: int = 6
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+    # ── Grounding & Safety (HLD §5.2, §8.4, §8.5) ────────────────
+    grounding_threshold: float = 0.30
+    refusal_message: str = "No information available, or it exists above your access level."
+    pii_redaction_enabled: bool = True
 
     # ── Application ──────────────────────────────────────────────
     debug: bool = False
