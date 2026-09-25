@@ -41,7 +41,7 @@ class TestAuditImmutability:
             )
             row_id = cur.fetchone()[0]
             cur.execute("COMMIT")
-        return row_id
+        return int(row_id)
 
     def test_update_audit_log_denied(self, app_conn, seeded_orgs):
         """UPDATE on audit_log must raise a permission error.

@@ -126,7 +126,8 @@ class TestPoolingHazard:
 
                         # After COMMIT, the setting must be gone (evaluates to NULL)
                         cur.execute("SELECT nullif(current_setting('veydus.org_id', true), '')")
-                        residual = cur.fetchone()[0]
+                        row = cur.fetchone()
+                        residual = row[0] if row else None
 
                         if residual is not None:
                             residual_leaks.append({"connection": i, "residual_org_id": residual})

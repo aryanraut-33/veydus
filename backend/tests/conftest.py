@@ -175,3 +175,21 @@ def superuser_conn(migrated_db):
     )
     yield conn
     conn.close()
+
+
+@pytest.fixture()
+async def setup_test_engine(migrated_db):
+    """Point the application async engine to the migrated test database."""
+    from veydus.config import settings
+    from veydus.db.engine import dispose_engine
+
+    old_url = settings.app_db_url
+    test_url = (
+        f"postgresql+asyncpg://{APP_USER}:{APP_PASSWORD}"
+        f"@{migrated_db['host']}:{migrated_db['port']}/{migrated_db['dbname']}"
+    )
+    settings.app_db_url = test_url
+    await dispose_engine()
+    yield test_url
+    await dispose_engine()
+    settings.app_db_url = old_url

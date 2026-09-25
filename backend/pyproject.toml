@@ -32,6 +32,14 @@ dependencies = [
     # ── Configuration ────────────────────────────────────────────
     "pydantic-settings>=2.0",           # Settings from environment variables
     "pydantic>=2.0",                    # Data validation and serialisation
+
+    # ── Inference & Networking (HLD §12) ─────────────────────────
+    "httpx>=0.27",                      # Async HTTP client for NIM API
+    "tenacity>=8.3",                    # Retry logic with backoff & jitter
+    "numpy>=1.26",                      # Vector normalization (Matryoshka)
+
+    # ── Ingestion & Parsing (HLD §7) ─────────────────────────────
+    "docling>=2.0",                     # Unified document parsing + OCR
 ]
 
 [project.optional-dependencies]
@@ -78,12 +86,15 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = ["veydus"]
 
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-base-classes = ["pydantic.BaseModel"]
+
 # ── Mypy (static type checker) ──────────────────────────────────
 [tool.mypy]
 python_version = "3.12"
 strict = true
 warn_return_any = true
-warn_unused_configs = true
+warn_unused_configs = false
 
 [[tool.mypy.overrides]]
 module = [
@@ -93,8 +104,17 @@ module = [
     "psycopg2.*",
     "asyncpg",
     "asyncpg.*",
+    "docling.*",
+    "docling_core.*",
+    "tenacity.*",
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
 
 # ── Pytest ──────────────────────────────────────────────────────
 [tool.pytest.ini_options]

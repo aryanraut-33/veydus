@@ -69,11 +69,11 @@ async def tenant_transaction(
     engine = get_engine()
 
     async with engine.begin() as conn:
-        # SET LOCAL is transaction-scoped — discarded on commit/rollback.
+        # set_config(..., true) is transaction-scoped — discarded on commit/rollback.
         # This is the ONLY place in the codebase where veydus.org_id
         # is set.  Any other SET statement is a defect.
         await conn.execute(
-            text("SET LOCAL veydus.org_id = :org_id"),
+            text("SELECT set_config('veydus.org_id', :org_id, true)"),
             {"org_id": str(org_id)},
         )
         yield conn

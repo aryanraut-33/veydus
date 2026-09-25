@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import random
+from typing import Any
 
 import psycopg2
 import pytest
@@ -54,7 +55,7 @@ def seeded_orgs(migrated_db):
     )
     conn.autocommit = False
 
-    result: dict[str, dict] = {"org_a": {}, "org_b": {}}
+    result: dict[str, dict[str, Any]] = {"org_a": {}, "org_b": {}}
 
     try:
         with conn, conn.cursor() as cur:
