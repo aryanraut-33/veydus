@@ -1,6 +1,0 @@
-let us start with the implementation of Phase A — RAG Pipeline & Infrastructure, Sprint A2 — Ingestion Pipeline; provide detailed step by step execution details, create a plan and after approval start implementing the code, the code should be well commented; 
-
-you do not have browser access, if anything / any tool needs to be set up, I'll do it myself, you have to properly guide me in that aspect; 
-
-
-yes proceed, ensure that in the top part of every file, you concisely comment exeactly what is happening in that file, what tool/technoques/libraries being used and for what; at the end of the sprint summarise what we achieved in the sprint and success checks that I mysekf will verify and not you
