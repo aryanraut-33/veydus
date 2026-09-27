@@ -1,0 +1,47 @@
+# ─────────────────────────────────────────────────────────────────
+# VEYDUS — Production Container: Cloud Run Jobs (Alembic & CLI Tasks)
+# ─────────────────────────────────────────────────────────────────
+# What:  Lightweight production Dockerfile for executing one-off tasks on
+#        Google Cloud Run Jobs (Alembic database migrations, org provisioning).
+# How:   - Copies Alembic migrations, configurations, and administrative scripts.
+#        - Runs inside the VPC with direct access to the private database VM.
+#        - Default entrypoint runs "alembic upgrade head", with parameter overrides
+#          for running python scripts/provision_org.py.
+# Why:   HLD §18.1 & Sprint A5 requirement: The database VM has no public IP.
+#        Schema migrations and organization provisioning must run inside the VPC
+#        via Cloud Run Jobs rather than insecurely exposing port 5432.
+# Tools: Docker, Python 3.12-slim, Alembic, psycopg2-binary, asyncpg.
+# ─────────────────────────────────────────────────────────────────
+
+FROM --platform=linux/amd64 python:3.12-slim AS runner
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml .
+COPY src/ ./src/
+COPY alembic/ ./alembic/
+COPY alembic.ini .
+COPY scripts/ ./scripts/
+
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir .
+
+# Create unprivileged system user
+RUN groupadd -g 10001 veydus && \
+    useradd -u 10000 -g veydus -s /bin/bash -m veydus && \
+    chown -R veydus:veydus /app
+
+USER veydus
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/src
+
+# Default command: run Alembic database migrations
+ENTRYPOINT ["alembic"]
+CMD ["upgrade", "head"]

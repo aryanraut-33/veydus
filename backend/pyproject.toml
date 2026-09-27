@@ -25,10 +25,13 @@ dependencies = [
     "alembic>=1.13",                    # Schema migration management
     "psycopg2-binary>=2.9",            # Sync PG driver (Alembic + scripts)
 
-    # ── API (HLD §11) ───────────────────────────────────────────
+    # ── API & Auth (HLD §6, §11) ────────────────────────────────
     "fastapi>=0.111",                   # ASGI web framework
     "uvicorn[standard]>=0.30",          # ASGI server with lifespan
+    "gunicorn>=22.0",                   # Production process manager
     "pyjwt>=2.8",                       # JWT validation and decoding
+    "cryptography>=42.0",               # RSA signature verification for JWKS
+    "cachetools>=5.3",                  # In-process 30-second TTL scope cache (HLD §6.2)
 
     # ── Configuration ────────────────────────────────────────────
     "pydantic-settings>=2.0",           # Settings from environment variables

@@ -17,11 +17,13 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
-import jwt
 from fastapi import Header, HTTPException, status
 
+from veydus.auth.scope import UserScopeNotFoundError, resolve_user_scope_from_db
+from veydus.auth.token import TokenVerificationError, verify_idp_token
 from veydus.authz.models import UserScope
 from veydus.config import settings
+from veydus.db.engine import get_engine
 
 logger = logging.getLogger(__name__)
 
@@ -33,33 +35,34 @@ async def get_current_user_scope(
     x_department_id: str | None = Header(default=None, alias="X-Department-Id"),
     x_hierarchy_level: int | None = Header(default=None, alias="X-Hierarchy-Level"),
 ) -> UserScope:
-    """Extracts and verifies caller identity, compiling server-resolved UserScope."""
-    # 1. Bearer JWT Authentication
+    """Extracts and verifies caller identity, compiling server-resolved UserScope.
+
+    - Verifies Identity Platform JWT via Google JWKS to extract `idp_subject`.
+    - Resolves `UserScope` server-side from PostgreSQL with in-process 30s TTL cache (HLD §6.2).
+    - Supports trusted dev/test headers when configured.
+    """
+    # 1. Bearer JWT Authentication (Identity Platform JWKS or Dev HMAC)
     if authorization and authorization.startswith("Bearer "):
         token = authorization[7:].strip()
         try:
-            payload = jwt.decode(
-                token,
-                settings.jwt_secret_key,
-                algorithms=["HS256"],
-                options={"verify_aud": False},
-            )
-            org_id = UUID(payload["org_id"])
-            user_id = UUID(payload.get("sub") or payload["user_id"])
-            department_id = UUID(payload["department_id"])
-            hierarchy_level = int(payload.get("hierarchy_level", 1))
-
-            return UserScope(
-                org_id=org_id,
-                user_id=user_id,
-                department_id=department_id,
-                hierarchy_level=hierarchy_level,
-            )
-        except (jwt.PyJWTError, KeyError, ValueError) as exc:
-            logger.warning("Invalid JWT bearer token: %s", exc)
+            idp_subject = verify_idp_token(token, settings)
+        except TokenVerificationError as exc:
+            logger.warning("Bearer token verification failed: %s", exc)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or expired authentication token",
+                detail=f"Invalid or expired authentication token: {exc}",
+            ) from exc
+
+        # Resolve UserScope from database / TTL cache
+        engine = get_engine()
+        try:
+            async with engine.connect() as conn:
+                return await resolve_user_scope_from_db(conn, idp_subject)
+        except UserScopeNotFoundError as exc:
+            logger.warning("User scope resolution failed for subject %s: %s", idp_subject, exc)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Active tenant access grant not found for caller identity",
             ) from exc
 
     # 2. Test/Dev Explicit Header Fallback

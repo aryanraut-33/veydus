@@ -19,7 +19,19 @@ import httpx
 import pytest
 
 from veydus.api.main import app
+from veydus.auth.oidc import verify_cloud_tasks_oidc
 from veydus.ingestion.pipeline import DeletionResult, IngestionResult
+
+
+@pytest.fixture(autouse=True)
+def override_oidc_auth():
+    """Bypass Cloud Tasks OIDC requirement for internal API unit tests."""
+    app.dependency_overrides[verify_cloud_tasks_oidc] = lambda: {
+        "sub": "test-caller",
+        "email": "test-tasks-sa@internal",
+    }
+    yield
+    app.dependency_overrides.pop(verify_cloud_tasks_oidc, None)
 
 
 @pytest.mark.asyncio

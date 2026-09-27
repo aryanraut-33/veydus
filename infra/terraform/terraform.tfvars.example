@@ -1,0 +1,23 @@
+# ==============================================================================
+# FILE: infra/terraform/terraform.tfvars.example
+# WHAT: Example variable definitions file for Veydus Terraform deployment.
+# HOW: Copy this file to terraform.tfvars and fill in your actual GCP values.
+# WHY: Keeps sensitive passwords and GCP project identifiers out of source control.
+# TOOLS/LIBRARIES: Terraform HCL.
+# ==============================================================================
+
+project_id             = "veydus"
+region                 = "asia-south1"
+zone                   = "asia-south1-a"
+
+# Passwords for the self-hosted PostgreSQL 16 instance on e2-micro
+app_db_password        = "replace-with-a-secure-random-app-password-32chars"
+migration_db_password  = "replace-with-a-secure-random-migration-password-32chars"
+
+# NVIDIA API key for hosted embeddings and LLM inference
+nvidia_api_key         = "nvapi-replace-with-your-real-nvidia-api-key"
+
+# Container images in Artifact Registry (Mumbai: asia-south1-docker.pkg.dev/PROJECT/veydus/...)
+api_image              = "asia-south1-docker.pkg.dev/veydus/veydus/api:latest"
+worker_image           = "asia-south1-docker.pkg.dev/veydus/veydus/worker:latest"
+jobs_image             = "asia-south1-docker.pkg.dev/veydus/veydus/jobs:latest"

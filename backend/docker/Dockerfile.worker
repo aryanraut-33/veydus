@@ -1,0 +1,82 @@
+# ─────────────────────────────────────────────────────────────────
+# VEYDUS — Production Container: Ingestion Worker Service (Cloud Run)
+# ─────────────────────────────────────────────────────────────────
+# What:  Multi-stage production Dockerfile packaging the ingestion worker
+#        for Google Cloud Run internal-only execution.
+# How:   - Stage 1 (builder): Installs Python dependencies including Docling,
+#          PyMuPDF, and Presidio analyzers.
+#        - Stage 2 (runtime): Installs system libraries for OCR, PDF rendering,
+#          and text extraction; runs as non-root user (veydus).
+#        - Binds to $PORT (default 8080) receiving Cloud Tasks HTTP push webhooks.
+# Why:   HLD §4.4 & §7 mandate: Asynchronous, CPU-heavy ingestion must run isolated
+#        from public API traffic on internal-only Cloud Run instances.
+# Tools: Docker, Python 3.12-slim, Docling, PyMuPDF, FastAPI.
+# ─────────────────────────────────────────────────────────────────
+
+# ── Stage 1: Build & Dependency Resolution ───────────────────────
+FROM --platform=linux/amd64 python:3.12-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    libpq-dev \
+    libmagic1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml .
+COPY src/ ./src/
+
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir .
+
+# Download SpaCy language model for Presidio PII analyzer
+RUN python -m spacy download en_core_web_sm
+
+# ── Stage 2: Minimal Worker Runtime ──────────────────────────────
+FROM --platform=linux/amd64 python:3.12-slim AS runner
+
+WORKDIR /app
+
+# Install runtime C libraries for document parsing, PDF rendering, and PostgreSQL
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    libmagic1 \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create unprivileged system user
+RUN groupadd -g 10001 veydus && \
+    useradd -u 10000 -g veydus -s /bin/bash -m veydus
+
+# Copy installed Python packages and binaries
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy application source code
+COPY src/ /app/src/
+COPY pyproject.toml /app/
+
+# Environment configurations
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app/src \
+    PORT=8080
+
+USER veydus
+
+EXPOSE 8080
+
+# Production Gunicorn worker process
+CMD exec gunicorn \
+    -k uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:${PORT} \
+    --workers 1 \
+    --threads 8 \
+    --timeout 600 \
+    --graceful-timeout 60 \
+    --access-logfile - \
+    --error-logfile - \
+    veydus.api.main:app

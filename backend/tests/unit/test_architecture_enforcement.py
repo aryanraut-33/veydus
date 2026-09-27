@@ -22,6 +22,7 @@ from pathlib import Path
 _PERMITTED_RELATIVE_PATHS = {
     Path("authz/policy.py"),
     Path("db/repositories/chunks.py"),
+    Path("auth/scope.py"),
 }
 
 # The access control attributes that must not appear in ad-hoc SQL strings

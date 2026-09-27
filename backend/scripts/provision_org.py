@@ -37,13 +37,17 @@ Note:  The idp_subject is auto-generated as a UUID placeholder.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import uuid
 
 import psycopg2
 
 # Default connection for local development
-_DEFAULT_DB_URL = "postgresql://veydus_migrate:veydus_migrate_pw@localhost:5432/veydus"
+_DEFAULT_DB_URL = os.environ.get(
+    "VEYDUS_MIGRATE_DB_URL",
+    "postgresql://veydus_migrate:veydus_migrate_pw@localhost:5432/veydus",
+)
 
 
 def provision_organization(

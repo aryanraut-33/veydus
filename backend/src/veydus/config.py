@@ -37,10 +37,24 @@ class Settings(BaseSettings):
     # Migration connection (veydus_migrate role, BYPASSRLS)
     migrate_db_url: str = "postgresql://veydus_migrate:veydus_migrate_pw@localhost:5432/veydus"
 
-    # ── Authentication & Security ────────────────────────────────
+    # ── Authentication & Identity Platform (HLD §6) ─────────────
     jwt_secret_key: str = Field(
         default="insecure_dev_jwt_secret_key_change_in_production",
         validation_alias=AliasChoices("JWT_SECRET_KEY", "VEYDUS_JWT_SECRET_KEY"),
+    )
+    auth_mode: str = Field(
+        default="idp",
+        validation_alias=AliasChoices("AUTH_MODE", "VEYDUS_AUTH_MODE"),
+    )
+    gcp_project_id: str = Field(
+        default="",
+        validation_alias=AliasChoices("GCP_PROJECT_ID", "VEYDUS_GCP_PROJECT_ID"),
+    )
+    cloud_tasks_service_account: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "CLOUD_TASKS_SERVICE_ACCOUNT", "VEYDUS_CLOUD_TASKS_SERVICE_ACCOUNT"
+        ),
     )
 
     # ── Connection Pool ──────────────────────────────────────────
@@ -94,3 +108,8 @@ class Settings(BaseSettings):
 
 # Module-level singleton — import this, don't instantiate Settings again.
 settings = Settings()
+
+
+def get_settings() -> Settings:
+    """Return the cached settings singleton."""
+    return settings

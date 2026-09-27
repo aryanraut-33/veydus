@@ -1,0 +1,81 @@
+# ─────────────────────────────────────────────────────────────────
+# VEYDUS — Production Container: API Service (Cloud Run)
+# ─────────────────────────────────────────────────────────────────
+# What:  Multi-stage production Dockerfile packaging the FastAPI application
+#        for Google Cloud Run serverless container execution.
+# How:   - Stage 1 (builder): Installs Python build dependencies, compiles wheels,
+#          and caches packages.
+#        - Stage 2 (runtime): Minimal python:3.12-slim base, non-root user (veydus),
+#          gunicorn process manager driving uvicorn.workers.UvicornWorker.
+#        - Binds to $PORT (default 8080) for Cloud Run HTTP traffic.
+# Why:   HLD §16 mandate: Production images must be lightweight, secure (non-root),
+#        and conform to Cloud Run container runtime contract.
+# Tools: Docker, Python 3.12-slim, Gunicorn, Uvicorn, FastAPI.
+# ─────────────────────────────────────────────────────────────────
+
+# ── Stage 1: Build & Dependency Resolution ───────────────────────
+FROM --platform=linux/amd64 python:3.12-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml .
+COPY src/ ./src/
+
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir .
+
+# ── Stage 2: Minimal Runtime ─────────────────────────────────────
+FROM --platform=linux/amd64 python:3.12-slim AS runner
+
+WORKDIR /app
+
+# Install runtime C libraries for PostgreSQL and OpenSSL
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create unprivileged system user per security best practices
+RUN groupadd -g 10001 veydus && \
+    useradd -u 10000 -g veydus -s /bin/bash -m veydus
+
+# Copy installed Python site-packages and binaries from builder
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy application source code
+COPY src/ /app/src/
+COPY pyproject.toml /app/
+
+# Environment configurations
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app/src \
+    PORT=8080
+
+USER veydus
+
+EXPOSE 8080
+
+# Health check probe for local/container testing
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# Production Gunicorn process manager with Uvicorn worker
+CMD exec gunicorn \
+    -k uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:${PORT} \
+    --workers 2 \
+    --threads 4 \
+    --timeout 120 \
+    --graceful-timeout 30 \
+    --access-logfile - \
+    --error-logfile - \
+    veydus.api.main:app

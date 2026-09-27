@@ -17,9 +17,10 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from veydus.auth.oidc import verify_cloud_tasks_oidc
 from veydus.ingestion.pipeline import (
     DeletionResult,
     IngestionPipeline,
@@ -58,7 +59,10 @@ def get_pipeline() -> IngestionPipeline:
 
 
 @router.post("/ingest", response_model=IngestionResult, status_code=status.HTTP_200_OK)
-async def trigger_ingest_job(request: IngestJobRequest) -> Any:
+async def trigger_ingest_job(
+    request: IngestJobRequest,
+    _auth: dict[str, Any] = Depends(verify_cloud_tasks_oidc),
+) -> Any:
     """Trigger document parsing, chunking, embedding, and indexing."""
     try:
         content_bytes = base64.b64decode(request.file_content_base64)
@@ -90,7 +94,10 @@ async def trigger_ingest_job(request: IngestJobRequest) -> Any:
 
 
 @router.post("/delete", response_model=DeletionResult, status_code=status.HTTP_200_OK)
-async def trigger_delete_job(request: DeleteJobRequest) -> Any:
+async def trigger_delete_job(
+    request: DeleteJobRequest,
+    _auth: dict[str, Any] = Depends(verify_cloud_tasks_oidc),
+) -> Any:
     """Trigger verifiable hard deletion of a knowledge source."""
     pipeline = get_pipeline()
     try:

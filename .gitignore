@@ -3,6 +3,7 @@ INSTRUCTIONS.md
 VEYDUS-HLD-MVP.md
 VEYDUS-PRD.md
 smthg.txt
+coding_agent.txt
 veydus_plan_summary.md
 veydus_implementation_plan.md
 veydus_implementation_plan.md.rtf
@@ -10,6 +11,14 @@ sprint_a1_summary_report.txt
 sprint_a2_summary_report.txt
 sprint_a3_summary_report.txt
 sprint_a4_summary_report.txt
+sprint_a5_summary_report.txt
+
+# ─── Terraform ───────────────────────────────────────────────────
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
 
 # ─── Python ──────────────────────────────────────────────────────
 __pycache__/
